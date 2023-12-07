@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { FreeCamera, Vector3, HemisphericLight, MeshBuilder, Scene, Mesh, KeyboardEventTypes } from "@babylonjs/core";
+import { FreeCamera, Vector3, HemisphericLight, MeshBuilder, Scene, Mesh, KeyboardEventTypes, SceneLoader } from "@babylonjs/core";
 import SceneComponent from 'babylonjs-hook';
 import "./App.css";
 
@@ -15,8 +15,15 @@ function App() {
     const light = new HemisphericLight("light", new Vector3(0, 1, 0), scene);
     light.intensity = 0.7;
 
-    sphere = MeshBuilder.CreateSphere("sphere", { diameter: 2 }, scene);
+    sphere = MeshBuilder.CreateSphere("sphere", { diameter: 0.5 }, scene);
     sphere.position.y = 1;
+    //camera.attachControl(canvas, true);
+
+    SceneLoader.ImportMesh("", "scenes/Alien/", "Alien.gltf", scene, function (meshes) {          
+      scene.createDefaultCameraOrLight(true, true, true);
+      scene.createDefaultEnvironment();
+      
+    });
 
     MeshBuilder.CreateGround("ground", { width: 6, height: 6 }, scene);
 
@@ -68,8 +75,8 @@ function App() {
       onSceneReady={onSceneReady}
       onRender={onRender}
       id="my-canvas"
-      width={window.innerWidth}
-      height={window.innerHeight}
+      width={window.innerWidth*0.8}
+      height={window.innerHeight*0.91}
     />
   );
 }

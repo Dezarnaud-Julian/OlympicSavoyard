@@ -1,0 +1,30 @@
+.score-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100px; /* Set your preferred height */
+    margin: 10px; /* Set your preferred margin */
+  }
+  
+  .score-rectangle {
+    width: 100%; /* Set your preferred width */
+    height: 100px; /* Set your preferred height */
+    background-color: #3498db; /* Set your preferred background color */
+    color: #fff; /* Set your preferred text color */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+    border-radius: 5px;
+  }
+  
+  .score-name {
+    font-size: 16px; /* Set your preferred font size for name */
+    margin-bottom: 5px;
+  }
+  
+  .score-value {
+    font-size: 24px; /* Set your preferred font size for score */
+    font-weight: bold;
+  }
+  

@@ -2,14 +2,28 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
+import Score from './Score';
 import reportWebVitals from './reportWebVitals';
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );
+
+// Wrapping App with a div as a container
 root.render(
   <React.StrictMode>
-    <App />
+    <div className="container">
+      <h1>React BabylonJS</h1>
+      <div className="content">
+        <div className="app-container">
+          <App />
+        </div>
+        <div className="sidebar">
+          <h2>LeaderBoard</h2>
+          <Score name="Player 1" score={100} />
+        </div>
+      </div>
+    </div>
   </React.StrictMode>
 );
 
