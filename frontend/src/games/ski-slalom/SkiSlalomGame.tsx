@@ -53,9 +53,9 @@ export class SkiSlalomGame implements Game {
     ambiantLight.intensity = 0.6;
     scene.environmentTexture = new HDRCubeTexture("https://assets.babylonjs.com/environments/Snow_Man_Scene/winter_lake_01_1k.hdr", scene, 128, false, true, false, true);
     scene.clearColor = new Color4(0.72, 0.85, 0.98, 1.0)
-    const sound = new Sound("WinterSounds", "https://assets.babylonjs.com/sound/Snow_Man_Scene/winterWoods.mp3", scene, function () {
-      sound.play(52);
-    }, { loop: true, autoplay: true });
+    // const sound = new Sound("WinterSounds", "https://assets.babylonjs.com/sound/Snow_Man_Scene/winterWoods.mp3", scene, function () {
+    //   sound.play(52);
+    // }, { loop: true, autoplay: true });
 
     this.player = new Player(scene);
 
@@ -108,31 +108,45 @@ export class SkiSlalomGame implements Game {
     let lastDoorPosition: Vector3 | null = null
     let path: Vector3[] = [];
     let index = 0;
-    const SIN_BASED_GENERATION = false;
+    const SIN_BASED_GENERATION = true;
+    let lastTurnWasLeft = false;
     if (SIN_BASED_GENERATION) {
       let turnLeft = false
-      let SINE_PERIOD = this.MAX_DISTANCE_BETWEEN_DOORS
-      let SIN_DECREASE = 0.01
-      let SINE_LENGTH = (this.SLOPE_WIDTH / 2)
-      for (let x = 0; x <= this.SLOPE_LENGTH; x += 1) {
-
-        let posX = Math.cos((2 * Math.PI * x) / (2 * SINE_PERIOD)) * SINE_LENGTH // + 5 * Math.sin(x * 0.1)
-        const pos = new Vector3(posX, 0.1, x - this.SLOPE_LENGTH / 2)
+      const MIN_SPEED = 0.01;
+      const MAX_SPEED = 0.02;
+      const SPEED_DELTA = MAX_SPEED - MIN_SPEED
+      const INITIAL_SINE_SPEED = MIN_SPEED // 0.01 really slow, 0.02 really quick
+      let SINE_AMPLITUDE = (this.SLOPE_WIDTH / 2)
+      let currentSpeed = INITIAL_SINE_SPEED
+      let currentAmplitude = SINE_AMPLITUDE
+      let drap = 0
+      let progress = 0;
+      const CURVE_RESOLUTION = 1;
+      let nbPeaks = 0
+      for (let t = 400; t <= this.SLOPE_LENGTH; t += CURVE_RESOLUTION) {
+        progress = (t / this.SLOPE_LENGTH)
+        // currentSpeed = INITIAL_SINE_SPEED + progress * SPEED_DELTA; // speed of the curve increase
+        let shiftF = (x: number) => { return 10 * Math.cos(x * (currentSpeed + 0.04)) }
+        let curveF = (x: number) => { return shiftF(x) + Math.sin(x * currentSpeed) * currentAmplitude };
+        const pos = new Vector3(curveF(t), 0.1, t - (this.SLOPE_LENGTH / 2))
+        const posB = new Vector3(curveF(t + 1), 0.1, (t + 1) - (this.SLOPE_LENGTH / 2))
+        let tangente = (posB.x - pos.x) / (posB.z - pos.z)
         path.push(pos)
-
-        const shouldSpawn = x % SINE_PERIOD == 0 // lastDoorPosition == null || pos.z >= lastDoorPosition.z + SINE_PERIOD
-        if (shouldSpawn) {
+        const shouldSpawn = Math.abs(tangente) < 0.1 // lastDoorPosition == null || pos.z >= lastDoorPosition.z + SINE_PERIOD
+        if (shouldSpawn) console.log(++nbPeaks)
+        turnLeft = tangente > 0
+        if (shouldSpawn && turnLeft !== lastTurnWasLeft) {
           const doorPosition = new Vector3(pos.x + ((turnLeft ? 1 : -1) * 5), pos.y, pos.z);
           const door = new Door(scene, index, doorPosition, turnLeft)
           await door.init(scene);
           door.mesh!.parent = ground;
           this.doors.push(door)
-          turnLeft = !turnLeft
           lastDoorPosition = doorPosition
+          lastTurnWasLeft = turnLeft;
+          drap++;
         }
-        // SINE_PERIOD -= SIN_DECREASE
-        // SINE_LENGTH -= SIN_DECREASE
       }
+      console.log("doors = " + this.doors.length)
     }
     else {
       let needsGeneration = true;
@@ -179,10 +193,10 @@ export class SkiSlalomGame implements Game {
     this.gameReady = true;
   };
 
-  SPEED_BONUS = 200;
+  SPEED_BONUS = 500;
   BOOST_FORCE = 600;
   STEER_FORCE = 3000;
-  acumulatedSpeed = 0;
+  acumulatedSpeed = 100;
   onUpdate = (scene: Scene) => {
     if (!this.gameReady || !this.player) return;
 
@@ -203,19 +217,20 @@ export class SkiSlalomGame implements Game {
     this.player.leftSki.rotation = Quaternion.RotationAxis(this.player.mesh.up, Angle.FromDegrees(this.player.rg.body.getLinearVelocity()._x).radians()).toEulerAngles();
     this.player.rightSki.rotation = Quaternion.RotationAxis(this.player.mesh.up, Angle.FromDegrees(this.player.rg.body.getLinearVelocity()._x).radians()).toEulerAngles();
 
-    this.player.rg.body.applyForce(new Vector3(this.player.mesh.forward.x * this.acumulatedSpeed / 5, this.player.mesh.forward.y * this.acumulatedSpeed / 5, this.player.mesh.forward.z * this.acumulatedSpeed / 5), // direction and magnitude of the applied force
+    this.player.rg.body.applyForce(new Vector3(0, -this.acumulatedSpeed, 0), // direction and magnitude of the applied force
       this.player.mesh.position // point in WORLD space where the force will be applied
     );
+
+    // this.acumulatedSpeed += scene.deltaTime * 0.1;
 
     if (this.nextDoor != null && this.nextDoor.mesh != null) {
 
       // If player goes further than next door
       if (this.player.mesh.getAbsolutePosition().z >= this.nextDoor.mesh.getAbsolutePosition().z) {
         if (!this.nextDoor.shouldGoLeft && this.player.mesh.getAbsolutePosition().x > this.nextDoor.mesh.getAbsolutePosition().x || this.nextDoor.shouldGoLeft && this.player.mesh.getAbsolutePosition().x < this.nextDoor.mesh.getAbsolutePosition().x) {
-          this.player.rg.body?.applyImpulse(new Vector3(this.player.mesh.forward.x * this.BOOST_FORCE, this.player.mesh.forward.y * this.BOOST_FORCE, this.player.mesh.forward.z * this.BOOST_FORCE), // direction and magnitude of the applied force
-            this.player.mesh.position // point in WORLD space where the force will be applied
-          );
-          this.acumulatedSpeed += this.SPEED_BONUS;
+          // this.player.rg.body?.applyImpulse(new Vector3(this.player.mesh.forward.x * this.BOOST_FORCE, this.player.mesh.forward.y * this.BOOST_FORCE, this.player.mesh.forward.z * this.BOOST_FORCE), // direction and magnitude of the applied force
+          //   this.player.mesh.position // point in WORLD space where the force will be applied
+          // );
           this.nextDoor.setActivated();
         } else this.nextDoor.setFailed();
 

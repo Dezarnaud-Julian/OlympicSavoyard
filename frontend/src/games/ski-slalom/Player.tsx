@@ -39,7 +39,7 @@ export class Player {
     rightSkiTrail.material = sourceMat
 
     // Create a sphere shape and the associated body. Size will be determined automatically.
-    this.rg = new PhysicsAggregate(this.mesh, PhysicsShapeType.BOX, { mass: 10, friction: 0, restitution: 1 }, scene);
+    this.rg = new PhysicsAggregate(this.mesh, PhysicsShapeType.BOX, { mass: 10, friction: 1000, restitution: 0 }, scene);
     this.rg.body.setAngularDamping(100)
     this.rg.body.setLinearDamping(2)
   }
