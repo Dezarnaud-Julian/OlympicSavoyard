@@ -1,4 +1,4 @@
-import { FreeCamera, Vector3, HemisphericLight, MeshBuilder, Scene, Mesh, HavokPlugin, PhysicsAggregate, PhysicsShapeType, FollowCamera, StandardMaterial, Color3, Space, Axis, Angle, DirectionalLight, ActionManager, HDRCubeTexture, Sound, Color4, NodeMaterial, ShadowGenerator, Quaternion, Texture } from "@babylonjs/core";
+import { FreeCamera, Vector3, HemisphericLight, MeshBuilder, Scene, Mesh, HavokPlugin, PhysicsAggregate, PhysicsShapeType, FollowCamera, StandardMaterial, Color3, Space, Axis, Angle, DirectionalLight, ActionManager, HDRCubeTexture, Sound, Color4, NodeMaterial, ShadowGenerator, Quaternion, Texture, ParticleSystem, ParticleHelper, TransformNode } from "@babylonjs/core";
 import HavokPhysics from "@babylonjs/havok";
 import { Inspector } from '@babylonjs/inspector';
 import { line2D } from "../../utils/line2d";
@@ -9,6 +9,8 @@ import { Chronometer } from "../../utils/Chronometer";
 import { Controls } from "../../core/Controls";
 import snowTexture from "../../textures/snow.jpg"
 import snowTextureN from "../../textures/NormalMap.png"
+import particles from "../../particles/particleSystem.json"
+import rain from "../../particles/rain.json"
 export const DEBUG_MODE = false;
 export class SkiSlalomGame implements Game {
 
@@ -57,7 +59,10 @@ export class SkiSlalomGame implements Game {
     //   sound.play(52);
     // }, { loop: true, autoplay: true });
 
+
+
     this.player = new Player(scene);
+
 
     // CAMERA
     camera.dispose()
@@ -77,6 +82,22 @@ export class SkiSlalomGame implements Game {
       camera.maxCameraSpeed = 1000;
       camera.lockedTarget = this.player.mesh;
     }
+
+    // snow
+    const snowPS = ParticleSystem.Parse(rain, scene, "", false, 1000);
+    const snowTransform = new Mesh("rainTransform", scene)
+    snowTransform.parent = camera;
+    snowTransform.position = new Vector3(0, 40, 25)
+    snowPS.emitter = snowTransform;
+    snowPS.start()
+
+    const snowWorldPS = ParticleSystem.Parse(rain, scene, "", false, 1000);
+    const snowTransformWorld = new Mesh("rainTransformWorld", scene)
+    snowTransformWorld.parent = camera;
+    snowTransformWorld.position = new Vector3(0, 100, 150)
+    snowWorldPS.emitter = snowTransformWorld;
+    snowWorldPS.start()
+
 
     // Ground
     const ground = MeshBuilder.CreateGround("ground", { width: this.GROUND_WIDTH, height: this.SLOPE_LENGTH }, scene);
