@@ -1,10 +1,12 @@
 {
   "compilerOptions": {
     "target": "es5",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "types": [
+      "babylonjs",
+      "babylonjs-loaders",
+      "babylonjs-gui",
+      "babylonjs-materials"
     ],
     "allowJs": true,
     "skipLibCheck": true,
@@ -20,7 +22,5 @@
     "noEmit": true,
     "jsx": "react-jsx"
   },
-  "include": [
-    "src"
-  ]
+  "include": ["src"]
 }
