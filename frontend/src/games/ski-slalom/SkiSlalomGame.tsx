@@ -1,4 +1,4 @@
-import { FreeCamera, Vector3, HemisphericLight, MeshBuilder, Scene, Mesh, HavokPlugin, PhysicsAggregate, PhysicsShapeType, FollowCamera, StandardMaterial, Color3, Space, Axis, Angle, DirectionalLight, ActionManager, HDRCubeTexture, Sound, Color4, NodeMaterial, ShadowGenerator, Quaternion } from "@babylonjs/core";
+import { FreeCamera, Vector3, HemisphericLight, MeshBuilder, Scene, Mesh, HavokPlugin, PhysicsAggregate, PhysicsShapeType, FollowCamera, StandardMaterial, Color3, Space, Axis, Angle, DirectionalLight, ActionManager, HDRCubeTexture, Sound, Color4, NodeMaterial, ShadowGenerator, Quaternion, Texture } from "@babylonjs/core";
 import HavokPhysics from "@babylonjs/havok";
 import { Inspector } from '@babylonjs/inspector';
 import { line2D } from "../../utils/line2d";
@@ -7,12 +7,12 @@ import { Player } from "./Player";
 import { Door } from "./Door";
 import { Chronometer } from "../../utils/Chronometer";
 import { Controls } from "../../core/Controls";
-
+import snowTexture from "../../textures/snow.jpg"
+import snowTextureN from "../../textures/NormalMap.png"
+export const DEBUG_MODE = false;
 export class SkiSlalomGame implements Game {
 
   gameReady = false
-
-  DEBUG = false;
 
   player: Player | null = null
   nextDoor: Door | null = null
@@ -41,16 +41,16 @@ export class SkiSlalomGame implements Game {
     const gravityVector = new Vector3(0, -400, 0);
     scene.enablePhysics(gravityVector, physicsPlugin);
 
-    if (this.DEBUG) Inspector.Show(scene, { embedMode: true, });
+    if (DEBUG_MODE) Inspector.Show(scene, { embedMode: true, });
 
     // SCENE ENVIRONMENT
     const sunLight = new DirectionalLight("sun", new Vector3(1, -1, 1), scene);
     sunLight.diffuse = Color3.FromHexString("#FFF3C0")
     sunLight.position = new Vector3(0, 1000, 0)
-    sunLight.intensity = 1;
+    sunLight.intensity = 3;
     const ambiantLight = new HemisphericLight("ambiant", new Vector3(0, 1, 0), scene);
     ambiantLight.diffuse = Color3.FromHexString("#C5C5FF")
-    ambiantLight.intensity = 0.6;
+    ambiantLight.intensity = 3;
     scene.environmentTexture = new HDRCubeTexture("https://assets.babylonjs.com/environments/Snow_Man_Scene/winter_lake_01_1k.hdr", scene, 128, false, true, false, true);
     scene.clearColor = new Color4(0.72, 0.85, 0.98, 1.0)
     // const sound = new Sound("WinterSounds", "https://assets.babylonjs.com/sound/Snow_Man_Scene/winterWoods.mp3", scene, function () {
@@ -61,7 +61,7 @@ export class SkiSlalomGame implements Game {
 
     // CAMERA
     camera.dispose()
-    if (this.DEBUG) {
+    if (DEBUG_MODE) {
       // creates and positions a free camera (non-mesh)
       camera = new FreeCamera("camera1", new Vector3(0, 50, -10), scene);
       camera.setTarget(Vector3.Zero());
@@ -86,9 +86,22 @@ export class SkiSlalomGame implements Game {
     // const groundMat = new StandardMaterial("groundMat");
     // groundMat.diffuseColor = Color3.White();
     // ground.material = groundMat;
-    NodeMaterial.ParseFromSnippetAsync("S2X75W#2", scene).then(nodeMaterial => {
-      ground.material = nodeMaterial;
-    });
+    const groundmat = new StandardMaterial("groundMat");
+    const texture = new Texture(snowTexture, scene);
+    const tilling = 6
+    texture.uScale = tilling * 1.0;
+    texture.vScale = tilling * 6.0;
+    groundmat.diffuseTexture = texture;
+    const detailMapTexture = new Texture(snowTextureN, scene);
+    detailMapTexture.uScale = tilling * 1.0;
+    detailMapTexture.vScale = tilling * 6.0;
+    groundmat.detailMap.texture = detailMapTexture
+    groundmat.detailMap.isEnabled = true;
+    ground.material = groundmat;
+
+    // NodeMaterial.ParseFromSnippetAsync("S2X75W#2", scene).then(nodeMaterial => {
+    //   ground.material = nodeMaterial;
+    // });
 
     // RENDERING
     var shadowGenerator = new ShadowGenerator(1024, sunLight);
@@ -122,7 +135,6 @@ export class SkiSlalomGame implements Game {
       let drap = 0
       let progress = 0;
       const CURVE_RESOLUTION = 1;
-      let nbPeaks = 0
       for (let t = 400; t <= this.SLOPE_LENGTH; t += CURVE_RESOLUTION) {
         progress = (t / this.SLOPE_LENGTH)
         // currentSpeed = INITIAL_SINE_SPEED + progress * SPEED_DELTA; // speed of the curve increase
@@ -133,7 +145,6 @@ export class SkiSlalomGame implements Game {
         let tangente = (posB.x - pos.x) / (posB.z - pos.z)
         path.push(pos)
         const shouldSpawn = Math.abs(tangente) < 0.1 // lastDoorPosition == null || pos.z >= lastDoorPosition.z + SINE_PERIOD
-        if (shouldSpawn) console.log(++nbPeaks)
         turnLeft = tangente > 0
         if (shouldSpawn && turnLeft !== lastTurnWasLeft) {
           const doorPosition = new Vector3(pos.x + ((turnLeft ? 1 : -1) * 5), pos.y, pos.z);
@@ -183,8 +194,8 @@ export class SkiSlalomGame implements Game {
     // draw line
     const line = line2D("line", { path: path, width: .5, closed: false, standardUV: true }, scene);
     const lineMaterial = new StandardMaterial("lineMat", scene);
-    lineMaterial.diffuseColor = Color3.FromHexString("#0099FF");
-    lineMaterial.alpha = 0.25
+    lineMaterial.diffuseColor = Color3.FromHexString("#0011FF");
+    lineMaterial.alpha = 0.3
     line.material = lineMaterial;
     line.parent = ground;
 
