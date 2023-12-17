@@ -11,6 +11,8 @@ import snowTexture from "../../textures/snow.jpg"
 import snowTextureN from "../../textures/NormalMap.png"
 import particles from "../../particles/particleSystem.json"
 import rain from "../../particles/rain.json"
+import driftSfx from "../../sfx/short.wav"
+import { Terrain } from "./Terrain";
 export const DEBUG_MODE = false;
 export class SkiSlalomGame implements Game {
 
@@ -28,6 +30,7 @@ export class SkiSlalomGame implements Game {
   MIN_DISTANCE_BETWEEN_DOORS = 100;
   chrono: Chronometer;
   controls: Controls;
+  driftSound: Sound | null = null
   constructor() {
     this.chrono = new Chronometer()
     this.controls = new Controls();
@@ -58,6 +61,9 @@ export class SkiSlalomGame implements Game {
     // const sound = new Sound("WinterSounds", "https://assets.babylonjs.com/sound/Snow_Man_Scene/winterWoods.mp3", scene, function () {
     //   sound.play(52);
     // }, { loop: true, autoplay: true });
+    this.driftSound = new Sound("driftSfx", driftSfx, scene);
+    this.driftSound.loop = false;
+    this.driftSound.autoplay = true;
 
 
 
@@ -109,6 +115,7 @@ export class SkiSlalomGame implements Game {
     // ground.material = groundMat;
     const groundmat = new StandardMaterial("groundMat");
     const texture = new Texture(snowTexture, scene);
+    groundmat.alpha = 0.5
     const tilling = 6
     texture.uScale = tilling * 1.0;
     texture.vScale = tilling * 6.0;
@@ -127,8 +134,6 @@ export class SkiSlalomGame implements Game {
     // RENDERING
     var shadowGenerator = new ShadowGenerator(1024, sunLight);
     shadowGenerator.addShadowCaster(this.player.mesh);
-    shadowGenerator.removeShadowCaster(this.player.leftSki);
-    shadowGenerator.removeShadowCaster(this.player.rightSki);
     shadowGenerator.useBlurExponentialShadowMap = true;
     ground.receiveShadows = true;
 
@@ -209,8 +214,9 @@ export class SkiSlalomGame implements Game {
       }
     }
 
-
     if (this.doors.length > 0) this.nextDoor = this.doors[0];
+
+    new Terrain(scene);
 
     // draw line
     const line = line2D("line", { path: path, width: .5, closed: false, standardUV: true }, scene);
@@ -238,12 +244,20 @@ export class SkiSlalomGame implements Game {
         new Vector3(-(this.STEER_FORCE * (1 + this.acumulatedSpeed / 20000) + this.player.rg.body.getLinearVelocity().length()), 0, 0), // direction and magnitude of the applied force
         this.player.mesh.position // point in WORLD space where the force will be applied
       );
+      if (this.player.rg.body.getLinearVelocity()._x < -50 && !this.driftSound?.isPlaying) {
+        this.driftSound?.setVolume(this.player.rg.body.getLinearVelocity()._x / 200)
+        this.driftSound?.play()
+      }
     }
     else if (this.controls.isRight) {
       this.player.rg.body.applyForce(
         new Vector3((this.STEER_FORCE * (1 + this.acumulatedSpeed / 20000) + this.player.rg.body.getLinearVelocity().length()), 0, 0), // direction and magnitude of the applied force
         this.player.mesh.position // point in WORLD space where the force will be applied
       );
+      if (this.player.rg.body.getLinearVelocity()._x > 50 && !this.driftSound?.isPlaying) {
+        this.driftSound?.setVolume(this.player.rg.body.getLinearVelocity()._x / 200)
+        this.driftSound?.play()
+      }
     }
 
     this.player.leftSki.rotation = Quaternion.RotationAxis(this.player.mesh.up, Angle.FromDegrees(this.player.rg.body.getLinearVelocity()._x).radians()).toEulerAngles();
