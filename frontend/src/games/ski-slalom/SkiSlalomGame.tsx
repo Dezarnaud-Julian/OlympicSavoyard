@@ -13,7 +13,8 @@ import particles from "../../particles/particleSystem.json"
 import rain from "../../particles/rain.json"
 import driftSfx from "../../sfx/short.wav"
 import { Terrain } from "./Terrain";
-export const DEBUG_MODE = false;
+
+export const DEBUG_MODE = true;
 export class SkiSlalomGame implements Game {
 
   gameReady = false
@@ -216,7 +217,8 @@ export class SkiSlalomGame implements Game {
 
     if (this.doors.length > 0) this.nextDoor = this.doors[0];
 
-    new Terrain(scene);
+    // const terrain = new Terrain(scene);
+    // terrain.terrain.mesh.rotate(Axis.X, this.SLOPE_ANGLE_RAD, Space.LOCAL);
 
     // draw line
     const line = line2D("line", { path: path, width: .5, closed: false, standardUV: true }, scene);
