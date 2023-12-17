@@ -1,4 +1,4 @@
-import { FreeCamera, Vector3, HemisphericLight, MeshBuilder, Scene, Mesh, HavokPlugin, PhysicsAggregate, PhysicsShapeType, FollowCamera, StandardMaterial, Color3, Space, Axis, Angle, DirectionalLight, ActionManager, HDRCubeTexture, Sound, Color4, NodeMaterial, ShadowGenerator, Quaternion, Texture, ParticleSystem, ParticleHelper, TransformNode } from "@babylonjs/core";
+import { FreeCamera, Vector3, HemisphericLight, MeshBuilder, Scene, Mesh, HavokPlugin, PhysicsAggregate, PhysicsShapeType, FollowCamera, StandardMaterial, Color3, Space, Axis, Angle, DirectionalLight, ActionManager, HDRCubeTexture, Sound, Color4, NodeMaterial, ShadowGenerator, Quaternion, Texture, ParticleSystem, ParticleHelper, TransformNode, CubeTexture } from "@babylonjs/core";
 import HavokPhysics from "@babylonjs/havok";
 import { Inspector } from '@babylonjs/inspector';
 import { line2D } from "../../utils/line2d";
@@ -8,13 +8,13 @@ import { Door } from "./Door";
 import { Chronometer } from "../../utils/Chronometer";
 import { Controls } from "../../core/Controls";
 import snowTexture from "../../textures/snow.jpg"
-import snowTextureN from "../../textures/NormalMap.png"
+import snowTextureN from "../../textures/snow_n.png"
 import particles from "../../particles/particleSystem.json"
 import rain from "../../particles/rain.json"
 import driftSfx from "../../sfx/short.wav"
 import { Terrain } from "./Terrain";
 
-export const DEBUG_MODE = true;
+export const DEBUG_MODE = false;
 export class SkiSlalomGame implements Game {
 
   gameReady = false
@@ -57,8 +57,9 @@ export class SkiSlalomGame implements Game {
     const ambiantLight = new HemisphericLight("ambiant", new Vector3(0, 1, 0), scene);
     ambiantLight.diffuse = Color3.FromHexString("#C5C5FF")
     ambiantLight.intensity = 3;
-    scene.environmentTexture = new HDRCubeTexture("https://assets.babylonjs.com/environments/Snow_Man_Scene/winter_lake_01_1k.hdr", scene, 128, false, true, false, true);
-    scene.clearColor = new Color4(0.72, 0.85, 0.98, 1.0)
+    scene.clearColor = new Color4(0, 0, 0, 0);
+    // scene.environmentTexture = new HDRCubeTexture("https://assets.babylonjs.com/environments/Snow_Man_Scene/winter_lake_01_1k.hdr", scene, 128, false, true, false, true);
+    // scene.clearColor = new Color4(0.72, 0.85, 0.98, 1.0)
     // const sound = new Sound("WinterSounds", "https://assets.babylonjs.com/sound/Snow_Man_Scene/winterWoods.mp3", scene, function () {
     //   sound.play(52);
     // }, { loop: true, autoplay: true });
@@ -66,7 +67,21 @@ export class SkiSlalomGame implements Game {
     this.driftSound.loop = false;
     this.driftSound.autoplay = true;
 
-
+    // Skybox
+    const skybox = MeshBuilder.CreateBox("skyBox", { size: 10000.0 }, scene);
+    const skyboxMaterial = new StandardMaterial("skyBox", scene);
+    skyboxMaterial.backFaceCulling = false;
+    // skyboxMaterial.reflectionTexture = new CubeTexture("./skybox/TropicalSunnyDay", scene, ["_px.jpg", "_py.jpg", "_pz.jpg", "_nx.jpg", "_ny.jpg", "_nz.jpg"]);
+    skyboxMaterial.reflectionTexture = new CubeTexture("./skybox/skybox", scene, ["_px.png", "_py.png", "_pz.png", "_nx.png", "_ny.png", "_nz.png"]);
+    skyboxMaterial.reflectionTexture.coordinatesMode = Texture.SKYBOX_MODE;
+    skyboxMaterial.diffuseColor = new Color3(0, 0, 0);
+    skyboxMaterial.specularColor = new Color3(0, 0, 0);
+    skyboxMaterial.disableLighting = true;
+    skybox.material = skyboxMaterial;
+    skybox.renderingGroupId = 0;
+    skybox.infiniteDistance = true;
+    skybox.rotate(Axis.Y, Angle.FromDegrees(220).radians(), Space.WORLD)
+    skybox.rotate(Axis.X, Angle.FromDegrees(30).radians(), Space.WORLD)
 
     this.player = new Player(scene);
 
@@ -82,8 +97,8 @@ export class SkiSlalomGame implements Game {
     }
     else {
       camera = new FollowCamera("FollowCam", new Vector3(0, 10, -20), scene);
-      camera.radius = 1;
-      camera.heightOffset = 0;
+      camera.radius = 0.5;
+      camera.heightOffset = -10;
       camera.rotationOffset = 0;
       camera.cameraAcceleration = 0.02;
       camera.maxCameraSpeed = 1000;
@@ -116,7 +131,7 @@ export class SkiSlalomGame implements Game {
     // ground.material = groundMat;
     const groundmat = new StandardMaterial("groundMat");
     const texture = new Texture(snowTexture, scene);
-    groundmat.alpha = 0.5
+    groundmat.alpha = 1
     const tilling = 6
     texture.uScale = tilling * 1.0;
     texture.vScale = tilling * 6.0;
