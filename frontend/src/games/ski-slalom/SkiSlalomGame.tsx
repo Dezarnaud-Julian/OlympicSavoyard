@@ -16,6 +16,7 @@ import driftSfx from "../../sfx/short.wav"
 import { Terrain } from "./Terrain";
 import { Boost } from "./Boost";
 import { wait } from "@testing-library/user-event/dist/utils";
+import { time } from "console";
 
 export const DEBUG_MODE = false;
 export class SkiSlalomGame implements Game {
@@ -23,6 +24,7 @@ export class SkiSlalomGame implements Game {
   gameReady = false
 
   player: Player | null = null
+  ground: Mesh | null = null
   nextDoor: Door | null = null
   doors: Door[] = []
 
@@ -134,10 +136,10 @@ export class SkiSlalomGame implements Game {
 
 
     // Ground
-    const ground = MeshBuilder.CreateGround("ground", { width: this.GROUND_WIDTH, height: this.SLOPE_LENGTH }, scene);
-    ground.rotate(Axis.X, this.SLOPE_ANGLE_RAD, Space.LOCAL);
+    this.ground = MeshBuilder.CreateGround("ground", { width: this.GROUND_WIDTH, height: this.SLOPE_LENGTH }, scene);
+    this.ground.rotate(Axis.X, this.SLOPE_ANGLE_RAD, Space.LOCAL);
     const GROUND_SHIFT_POS = new Vector3(0, -1, -5)
-    ground.position = new Vector3(0 + GROUND_SHIFT_POS.x, -Math.sin(this.SLOPE_ANGLE_RAD) * (this.SLOPE_LENGTH / 2) + GROUND_SHIFT_POS.y, Math.cos(this.SLOPE_ANGLE_RAD) * (this.SLOPE_LENGTH / 2) + GROUND_SHIFT_POS.z)
+    this.ground.position = new Vector3(0 + GROUND_SHIFT_POS.x, -Math.sin(this.SLOPE_ANGLE_RAD) * (this.SLOPE_LENGTH / 2) + GROUND_SHIFT_POS.y, Math.cos(this.SLOPE_ANGLE_RAD) * (this.SLOPE_LENGTH / 2) + GROUND_SHIFT_POS.z)
     // const groundMat = new StandardMaterial("groundMat");
     // groundMat.diffuseColor = Color3.White();
     // ground.material = groundMat;
@@ -153,7 +155,7 @@ export class SkiSlalomGame implements Game {
     detailMapTexture.vScale = tilling * 6.0;
     groundmat.detailMap.texture = detailMapTexture
     groundmat.detailMap.isEnabled = true;
-    ground.material = groundmat;
+    this.ground.material = groundmat;
 
     // NodeMaterial.ParseFromSnippetAsync("S2X75W#2", scene).then(nodeMaterial => {
     //   ground.material = nodeMaterial;
@@ -163,10 +165,10 @@ export class SkiSlalomGame implements Game {
     var shadowGenerator = new ShadowGenerator(1024, sunLight);
     shadowGenerator.addShadowCaster(this.player.mesh);
     shadowGenerator.useBlurExponentialShadowMap = true;
-    ground.receiveShadows = true;
+    this.ground.receiveShadows = true;
 
     // Create a static box shape.
-    const groundAggregate = new PhysicsAggregate(ground, PhysicsShapeType.BOX, { mass: 0, friction: 0, restitution: 1 }, scene);
+    const groundAggregate = new PhysicsAggregate(this.ground, PhysicsShapeType.BOX, { mass: 0, friction: 0, restitution: 1 }, scene);
 
 
     function randomNumberBetween(min: number, max: number): number {
@@ -205,12 +207,12 @@ export class SkiSlalomGame implements Game {
           const doorPosition = new Vector3(pos.x + ((turnLeft ? 1 : -1) * 5), pos.y, pos.z);
           const door = new Door(scene, index, doorPosition, turnLeft)
           await door.init(scene);
-          door.mesh!.parent = ground;
+          door.mesh!.parent = this.ground;
           this.doors.push(door)
           
           const ramp = new Ramp(scene, index, doorPosition)
           await ramp.init(scene);
-          ramp.mesh!.parent = ground;
+          ramp.mesh!.parent = this.ground;
           this.ramps.push(ramp)
           
           if(lastDoorPosition != null){
@@ -219,7 +221,7 @@ export class SkiSlalomGame implements Game {
               const boostPosition = new Vector3(pos.x + ((turnLeft ? 1 : -1) * 40), pos.y, pos.z -distanceBetweenDoors/1.5);
               const boost = new Boost(scene, index, boostPosition)
               await boost.init(scene);
-              boost.mesh!.parent = ground;
+              boost.mesh!.parent = this.ground;
               this.boosts.push(boost)
             }
           }
@@ -254,7 +256,7 @@ export class SkiSlalomGame implements Game {
         else {
           const door = new Door(scene, index, doorPosition, shouldTurnLeft)
           await door.init(scene);
-          door.mesh!.parent = ground;
+          door.mesh!.parent = this.ground;
           path.push(new Vector3(door.mesh!.position.x + ((shouldTurnLeft ? -1 : 1) * 5), 0.1, door.mesh!.position.z))
           this.doors.push(door)
         }
@@ -275,7 +277,7 @@ export class SkiSlalomGame implements Game {
     lineMaterial.diffuseColor = Color3.FromHexString("#0011FF");
     lineMaterial.alpha = 0.3
     line.material = lineMaterial;
-    line.parent = ground;
+    line.parent = this.ground;
 
     this.chrono.start();
 
@@ -286,7 +288,9 @@ export class SkiSlalomGame implements Game {
   BOOST_FORCE = 400;
   STEER_FORCE = 1500;
   acumulatedSpeed = 100;
-  hauteur = 1000000
+  lastjump = 0;
+  jumpCooldown = 1500; // 2000 milliseconds = 2 seconds
+
 
   onUpdate = (scene: Scene) => {
     if (!this.gameReady || !this.player) return;
@@ -312,11 +316,19 @@ export class SkiSlalomGame implements Game {
         this.driftSound?.play()
       }
     }
-    
-    if (this.controls.isUp && this.hauteur > this.player.mesh.getAbsolutePosition().y) {
-        this.player.rg.body?.applyImpulse(new Vector3(0, 100, 0), // direction and magnitude of the applied force
-              this.player.mesh.position
+    if (this.controls.isUp) {
+      const currentTime = performance.now();
+      // Check if enough time has passed since the last jump
+      if (currentTime - this.lastjump > this.jumpCooldown) {
+        // Update last jump time
+        this.lastjump = currentTime;
+  
+        // Perform the jump
+        this.player.rg.body?.applyImpulse(
+          new Vector3(0, 1000, (this.acumulatedSpeed + this.player.rg.body.getLinearVelocity().length())),
+          this.player.mesh.position
         );
+      }
     }
 
     if (this.controls.isDown) {
