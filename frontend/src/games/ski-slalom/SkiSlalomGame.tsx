@@ -34,6 +34,8 @@ export class SkiSlalomGame implements Game {
   nextBoost: Boost | null = null
   boosts: Boost[] = []
 
+  penalities = 0
+
   SLOPE_LENGTH = 5000;
   SLOPE_ANGLE_RAD = Angle.FromDegrees(30).radians()
   SLOPE_WIDTH = 80;
@@ -358,7 +360,10 @@ export class SkiSlalomGame implements Game {
             // this.player.mesh.position // point in WORLD space where the force will be applied
            //);
           this.nextDoor.setActivated();
-        } else this.nextDoor.setFailed();
+        } else{
+          this.nextDoor.setFailed();
+          this.penalities++;
+        }
 
         const newIndex = this.doors.indexOf(this.nextDoor) + 1
         if (newIndex < this.doors.length) {
@@ -366,7 +371,11 @@ export class SkiSlalomGame implements Game {
           this.nextDoor = newDoor;
         } else {
           this.nextDoor = null;
-          this.chrono.stop();
+          let time = this.chrono.stop()
+          console.log("RunTime = "+time+"s");
+          console.log("Penalities = +"+this.penalities+"s");
+          let totalTime : number = this.penalities+time
+          console.log("Final time = "+totalTime+"s");
         }
       }
     }
