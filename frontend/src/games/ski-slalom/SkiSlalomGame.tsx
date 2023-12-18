@@ -5,6 +5,7 @@ import { line2D } from "../../utils/line2d";
 import { Game } from "../Game";
 import { Player } from "./Player";
 import { Door } from "./Door";
+import { Ramp } from "./Ramp";
 import { Chronometer } from "../../utils/Chronometer";
 import { Controls } from "../../core/Controls";
 import snowTexture from "../../textures/snow.jpg"
@@ -13,6 +14,7 @@ import particles from "../../particles/particleSystem.json"
 import rain from "../../particles/rain.json"
 import driftSfx from "../../sfx/short.wav"
 import { Terrain } from "./Terrain";
+import { Boost } from "./Boost";
 
 export const DEBUG_MODE = false;
 export class SkiSlalomGame implements Game {
@@ -23,7 +25,13 @@ export class SkiSlalomGame implements Game {
   nextDoor: Door | null = null
   doors: Door[] = []
 
-  SLOPE_LENGTH = 10000;
+  nextRamp: Ramp | null = null
+  ramps: Ramp[] = []
+
+  nextBoost: Boost | null = null
+  boosts: Boost[] = []
+
+  SLOPE_LENGTH = 1000;
   SLOPE_ANGLE_RAD = Angle.FromDegrees(30).radians()
   SLOPE_WIDTH = 80;
   GROUND_WIDTH = 1000;
@@ -96,13 +104,16 @@ export class SkiSlalomGame implements Game {
       camera.attachControl(true);
     }
     else {
+
       camera = new FollowCamera("FollowCam", new Vector3(0, 10, -20), scene);
       camera.radius = 0.5;
-      camera.heightOffset = -10;
+      camera.heightOffset = 40;
       camera.rotationOffset = 0;
-      camera.cameraAcceleration = 0.02;
+      camera.cameraAcceleration = 0.01;
       camera.maxCameraSpeed = 1000;
       camera.lockedTarget = this.player.mesh;
+      camera.attachControl(true);
+
     }
 
     // snow
@@ -156,6 +167,7 @@ export class SkiSlalomGame implements Game {
     // Create a static box shape.
     const groundAggregate = new PhysicsAggregate(ground, PhysicsShapeType.BOX, { mass: 0, friction: 0, restitution: 1 }, scene);
 
+
     function randomNumberBetween(min: number, max: number): number {
       return Math.random() * (max - min) + min;
     }
@@ -194,12 +206,31 @@ export class SkiSlalomGame implements Game {
           await door.init(scene);
           door.mesh!.parent = ground;
           this.doors.push(door)
+          
+          const ramp = new Ramp(scene, index, doorPosition)
+          await ramp.init(scene);
+          ramp.mesh!.parent = ground;
+          this.ramps.push(ramp)
+          
+          if(lastDoorPosition != null){
+            const distanceBetweenDoors = doorPosition.z - lastDoorPosition?._z
+            if( distanceBetweenDoors >= 92){
+              const boostPosition = new Vector3(pos.x + ((turnLeft ? 1 : -1) * 20), pos.y, pos.z -distanceBetweenDoors/2);
+              const boost = new Boost(scene, index, boostPosition)
+              await boost.init(scene);
+              boost.mesh!.parent = ground;
+              this.boosts.push(boost)
+            }
+          }
+
           lastDoorPosition = doorPosition
           lastTurnWasLeft = turnLeft;
           drap++;
         }
       }
       console.log("doors = " + this.doors.length)
+      console.log("boosts = " + this.boosts.length)
+
     }
     else {
       let needsGeneration = true;
@@ -231,6 +262,8 @@ export class SkiSlalomGame implements Game {
     }
 
     if (this.doors.length > 0) this.nextDoor = this.doors[0];
+    if (this.boosts.length > 0) this.nextBoost = this.boosts[0];
+
 
     // const terrain = new Terrain(scene);
     // terrain.terrain.mesh.rotate(Axis.X, this.SLOPE_ANGLE_RAD, Space.LOCAL);
@@ -250,7 +283,7 @@ export class SkiSlalomGame implements Game {
 
   SPEED_BONUS = 500;
   BOOST_FORCE = 600;
-  STEER_FORCE = 3000;
+  STEER_FORCE = 1500;
   acumulatedSpeed = 100;
   onUpdate = (scene: Scene) => {
     if (!this.gameReady || !this.player) return;
@@ -276,6 +309,15 @@ export class SkiSlalomGame implements Game {
         this.driftSound?.play()
       }
     }
+    if (this.controls.isUp) {
+      this.acumulatedSpeed = 600;
+      this.STEER_FORCE = 800;
+      this.player.startLeanAnimation(scene);
+    }else{
+      this.acumulatedSpeed = 100;
+      this.STEER_FORCE = 1500;
+      this.player.stopLeanAnimation(scene);
+    }
 
     this.player.leftSki.rotation = Quaternion.RotationAxis(this.player.mesh.up, Angle.FromDegrees(this.player.rg.body.getLinearVelocity()._x).radians()).toEulerAngles();
     this.player.rightSki.rotation = Quaternion.RotationAxis(this.player.mesh.up, Angle.FromDegrees(this.player.rg.body.getLinearVelocity()._x).radians()).toEulerAngles();
@@ -291,9 +333,9 @@ export class SkiSlalomGame implements Game {
       // If player goes further than next door
       if (this.player.mesh.getAbsolutePosition().z >= this.nextDoor.mesh.getAbsolutePosition().z) {
         if (!this.nextDoor.shouldGoLeft && this.player.mesh.getAbsolutePosition().x > this.nextDoor.mesh.getAbsolutePosition().x || this.nextDoor.shouldGoLeft && this.player.mesh.getAbsolutePosition().x < this.nextDoor.mesh.getAbsolutePosition().x) {
-          // this.player.rg.body?.applyImpulse(new Vector3(this.player.mesh.forward.x * this.BOOST_FORCE, this.player.mesh.forward.y * this.BOOST_FORCE, this.player.mesh.forward.z * this.BOOST_FORCE), // direction and magnitude of the applied force
-          //   this.player.mesh.position // point in WORLD space where the force will be applied
-          // );
+           //this.player.rg.body?.applyImpulse(new Vector3(this.player.mesh.forward.x * this.BOOST_FORCE, this.player.mesh.forward.y * this.BOOST_FORCE, this.player.mesh.forward.z * this.BOOST_FORCE), // direction and magnitude of the applied force
+            // this.player.mesh.position // point in WORLD space where the force will be applied
+           //);
           this.nextDoor.setActivated();
         } else this.nextDoor.setFailed();
 
@@ -304,6 +346,24 @@ export class SkiSlalomGame implements Game {
         } else {
           this.nextDoor = null;
           this.chrono.stop();
+        }
+      }
+    }
+
+    if (this.nextBoost != null && this.nextBoost.mesh != null) {
+      if (this.player.mesh.getAbsolutePosition().z >= this.nextBoost.mesh.getAbsolutePosition().z - this.nextBoost.getHeight()/1.5 && this.player.mesh.getAbsolutePosition().z <= this.nextBoost.mesh.getAbsolutePosition().z + this.nextBoost.getHeight()/1.5) {
+        if (this.player.mesh.getAbsolutePosition().x >= this.nextBoost.mesh.getAbsolutePosition().x - this.nextBoost.getWidth()/1.5 && this.player.mesh.getAbsolutePosition().x <= this.nextBoost.mesh.getAbsolutePosition().x + this.nextBoost.getWidth()/1.5) {
+          this.player.rg.body?.applyImpulse(new Vector3(this.player.mesh.forward.x * this.BOOST_FORCE, this.player.mesh.forward.y * this.BOOST_FORCE, this.player.mesh.forward.z * this.BOOST_FORCE), // direction and magnitude of the applied force
+            this.player.mesh.position
+          );
+        }
+
+        const newIndex = this.boosts.indexOf(this.nextBoost) + 1
+        if (newIndex < this.boosts.length) {
+          const newBoost = this.boosts[this.boosts.indexOf(this.nextBoost) + 1];
+          this.nextBoost = newBoost;
+        } else {
+          this.nextBoost = null;
         }
       }
     }

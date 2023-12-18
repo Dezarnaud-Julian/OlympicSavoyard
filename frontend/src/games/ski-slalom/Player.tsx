@@ -1,4 +1,4 @@
-import { AssetsManager, Color3, Mesh, MeshBuilder, ParticleHelper, ParticleSystem, PhysicsAggregate, PhysicsShapeType, Scene, SolidParticleSystem, StandardMaterial, TrailMesh, Vector3 } from "@babylonjs/core";
+import { Angle, AssetsManager, Axis, Color3, Mesh, MeshBuilder, ParticleHelper, ParticleSystem, PhysicsAggregate, PhysicsShapeType, Quaternion, Scene, SolidParticleSystem, Space, StandardMaterial, TrailMesh, Vector3 } from "@babylonjs/core";
 import particles from "../../particles/particleSystem.json"
 import texture from "../../particles/snowball.png"
 import { DEBUG_MODE } from "./SkiSlalomGame";
@@ -6,8 +6,12 @@ export class Player {
 
   rg: PhysicsAggregate;
   mesh: Mesh
+  playerMesh: Mesh
+
   leftSki: Mesh
   rightSki: Mesh
+  private isLeaning: boolean = false;
+
   constructor(scene: Scene) {
     this.mesh = MeshBuilder.CreateBox("player", { size: 2 }, scene);
     this.mesh.isVisible = false
@@ -15,9 +19,9 @@ export class Player {
     playerMat.diffuseColor = Color3.Black();
     this.mesh.material = playerMat;
 
-    const playerMesh = MeshBuilder.CreateCapsule("player", { height: 3, radius: 0.8 }, scene);
-    playerMesh.parent = this.mesh
-    playerMesh.material = playerMat;
+    this.playerMesh = MeshBuilder.CreateCapsule("player", { height: 3, radius: 0.8 }, scene);
+    this.playerMesh.parent = this.mesh
+    this.playerMesh.material = playerMat;
 
     this.leftSki = MeshBuilder.CreateBox("leftSki", { width: 0.5, height: 0.1, depth: 6 }, scene);
     this.leftSki.material = playerMat;
@@ -87,5 +91,18 @@ export class Player {
     this.rg = new PhysicsAggregate(this.mesh, PhysicsShapeType.BOX, { mass: 10, friction: 1000, restitution: 0 }, scene);
     this.rg.body.setAngularDamping(100)
     this.rg.body.setLinearDamping(2)
+  }
+  public startLeanAnimation(scene: Scene): void {
+    if (!this.isLeaning) {
+      this.isLeaning = true;
+      this.playerMesh.rotate(Axis.X, Angle.FromDegrees(50).radians(), Space.WORLD)
+    }
+  }
+
+  public stopLeanAnimation(scene: Scene): void {
+    if (this.isLeaning) {
+      this.isLeaning = false;
+      this.playerMesh.rotate(Axis.X, -Angle.FromDegrees(50).radians(), Space.WORLD)
+    }
   }
 }
