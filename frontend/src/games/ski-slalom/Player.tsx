@@ -1,13 +1,15 @@
-import { Angle, AssetsManager, Axis, Color3, Mesh, MeshBuilder, ParticleHelper, ParticleSystem, PhysicsAggregate, PhysicsShapeType, Quaternion, Scene, SolidParticleSystem, Space, StandardMaterial, TrailMesh, Vector3 } from "@babylonjs/core";
+import { Angle, AssetsManager, Axis, Collider, Color3, Mesh, MeshBuilder, ParticleHelper, ParticleSystem, PhysicsAggregate, PhysicsShapeType, Quaternion, Scene, SolidParticleSystem, Space, StandardMaterial, TrailMesh, Vector3 } from "@babylonjs/core";
 import particles from "../../particles/particleSystem.json"
 import texture from "../../particles/snowball.png"
 import { DEBUG_MODE } from "./SkiSlalomGame";
 export class Player {
+ 
 
   rg: PhysicsAggregate;
   mesh: Mesh
   playerMesh: Mesh
-
+  beanie: Mesh
+  //scarf: Mesh
   leftSki: Mesh
   rightSki: Mesh
   private isLeaning: boolean = false;
@@ -22,6 +24,24 @@ export class Player {
     this.playerMesh = MeshBuilder.CreateCapsule("player", { height: 3, radius: 0.8 }, scene);
     this.playerMesh.parent = this.mesh
     this.playerMesh.material = playerMat;
+
+    const beanieMat = new StandardMaterial("beanieMat");
+    beanieMat.diffuseColor = Color3.Red();
+    this.beanie = MeshBuilder.CreateSphere("beanie", { diameter: 1.6 }, scene);
+    this.beanie.parent = this.playerMesh
+    this.beanie.position.y = 0.8
+
+    this.beanie.material = beanieMat;
+
+
+    /*
+    const scarfMat = new StandardMaterial("scarfMat");
+    scarfMat.diffuseColor = Color3.Red();
+    this.scarf = MeshBuilder.CreateRibbon("scarf", { : 1.6 }, scene);
+    this.scarf.parent = this.playerMesh
+    this.scarf.position.y = 0.8
+    this.scarf.material = beanieMat;
+    */
 
     this.leftSki = MeshBuilder.CreateBox("leftSki", { width: 0.5, height: 0.1, depth: 6 }, scene);
     this.leftSki.material = playerMat;

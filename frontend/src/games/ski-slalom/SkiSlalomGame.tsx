@@ -1,4 +1,4 @@
-import { FreeCamera, Vector3, HemisphericLight, MeshBuilder, Scene, Mesh, HavokPlugin, PhysicsAggregate, PhysicsShapeType, FollowCamera, StandardMaterial, Color3, Space, Axis, Angle, DirectionalLight, ActionManager, HDRCubeTexture, Sound, Color4, NodeMaterial, ShadowGenerator, Quaternion, Texture, ParticleSystem, ParticleHelper, TransformNode, CubeTexture } from "@babylonjs/core";
+import { FreeCamera, Vector3, HemisphericLight, MeshBuilder, Scene, Mesh, HavokPlugin, PhysicsAggregate, PhysicsShapeType, FollowCamera, StandardMaterial, Color3, Space, Axis, Angle, DirectionalLight, ActionManager, HDRCubeTexture, Sound, Color4, NodeMaterial, ShadowGenerator, Quaternion, Texture, ParticleSystem, ParticleHelper, TransformNode, CubeTexture, GroundMesh } from "@babylonjs/core";
 import HavokPhysics from "@babylonjs/havok";
 import { Inspector } from '@babylonjs/inspector';
 import { line2D } from "../../utils/line2d";
@@ -15,6 +15,7 @@ import rain from "../../particles/rain.json"
 import driftSfx from "../../sfx/short.wav"
 import { Terrain } from "./Terrain";
 import { Boost } from "./Boost";
+import { wait } from "@testing-library/user-event/dist/utils";
 
 export const DEBUG_MODE = false;
 export class SkiSlalomGame implements Game {
@@ -31,7 +32,7 @@ export class SkiSlalomGame implements Game {
   nextBoost: Boost | null = null
   boosts: Boost[] = []
 
-  SLOPE_LENGTH = 1000;
+  SLOPE_LENGTH = 5000;
   SLOPE_ANGLE_RAD = Angle.FromDegrees(30).radians()
   SLOPE_WIDTH = 80;
   GROUND_WIDTH = 1000;
@@ -215,7 +216,7 @@ export class SkiSlalomGame implements Game {
           if(lastDoorPosition != null){
             const distanceBetweenDoors = doorPosition.z - lastDoorPosition?._z
             if( distanceBetweenDoors >= 92){
-              const boostPosition = new Vector3(pos.x + ((turnLeft ? 1 : -1) * 20), pos.y, pos.z -distanceBetweenDoors/2);
+              const boostPosition = new Vector3(pos.x + ((turnLeft ? 1 : -1) * 40), pos.y, pos.z -distanceBetweenDoors/1.5);
               const boost = new Boost(scene, index, boostPosition)
               await boost.init(scene);
               boost.mesh!.parent = ground;
@@ -282,9 +283,11 @@ export class SkiSlalomGame implements Game {
   };
 
   SPEED_BONUS = 500;
-  BOOST_FORCE = 600;
+  BOOST_FORCE = 400;
   STEER_FORCE = 1500;
   acumulatedSpeed = 100;
+  hauteur = 1000000
+
   onUpdate = (scene: Scene) => {
     if (!this.gameReady || !this.player) return;
 
@@ -309,8 +312,15 @@ export class SkiSlalomGame implements Game {
         this.driftSound?.play()
       }
     }
-    if (this.controls.isUp) {
-      this.acumulatedSpeed = 600;
+    
+    if (this.controls.isUp && this.hauteur > this.player.mesh.getAbsolutePosition().y) {
+        this.player.rg.body?.applyImpulse(new Vector3(0, 100, 0), // direction and magnitude of the applied force
+              this.player.mesh.position
+        );
+    }
+
+    if (this.controls.isDown) {
+      this.acumulatedSpeed = 500;
       this.STEER_FORCE = 800;
       this.player.startLeanAnimation(scene);
     }else{
@@ -318,7 +328,6 @@ export class SkiSlalomGame implements Game {
       this.STEER_FORCE = 1500;
       this.player.stopLeanAnimation(scene);
     }
-
     this.player.leftSki.rotation = Quaternion.RotationAxis(this.player.mesh.up, Angle.FromDegrees(this.player.rg.body.getLinearVelocity()._x).radians()).toEulerAngles();
     this.player.rightSki.rotation = Quaternion.RotationAxis(this.player.mesh.up, Angle.FromDegrees(this.player.rg.body.getLinearVelocity()._x).radians()).toEulerAngles();
 
